@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Пока идёт анализ — узнайте о мозге</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --card: #1a1d27;
+      --card2: #1e2130;
+      --border: rgba(255,255,255,.07);
+      --teal: #00d4e0;
+      --text: #e8ecf4;
+      --muted: #7a8499;
+      --frontal:  #e91e8c;
+      --parietal: #f0c040;
+      --occipital:#40c8e0;
+      --temporal: #2ecc71;
+      --cerebellum:#e74c3c;
+    }
+
+    * { margin:0; padding:0; box-sizing:border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 24px 16px 60px;
+    }
+
+    .container { max-width: 860px; margin: 0 auto; }
+
+    /* ── Wait header ── */
+    .wait-header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .wait-header .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(0,212,224,.12);
+      border: 1px solid rgba(0,212,224,.25);
+      border-radius: 20px;
+      padding: 6px 16px;
+      font-size: 13px;
+      color: var(--teal);
+      margin-bottom: 16px;
+    }
+    .badge-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--teal);
+      animation: pulseDot 1.2s ease-in-out infinite;
+    }
+    @keyframes pulseDot {
+      0%,100% { opacity:1; transform:scale(1); }
+      50%      { opacity:.4; transform:scale(.7); }
+    }
+    .wait-header h1 {
+      font-size: 26px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, #fff 30%, var(--teal));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .wait-header p {
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    /* ── Timer bar ── */
+    .timer-wrap {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+    .timer-track {
+      flex: 1;
+      height: 4px;
+      background: rgba(255,255,255,.08);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .timer-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--teal), #7c3aed);
+      border-radius: 2px;
+      width: 0%;
+      transition: width 1s linear;
+    }
+    .timer-text {
+      font-size: 13px;
+      color: var(--muted);
+      white-space: nowrap;
+      min-width: 48px;
+      text-align: right;
+    }
+
+    /* ── Main layout ── */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      align-items: start;
+      margin-bottom: 20px;
+    }
+    @media (max-width: 620px) {
+      .main-grid { grid-template-columns: 1fr; }
+    }
+
+    /* ── Brain panel ── */
+    .brain-panel {
+      background: var(--card);
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      padding: 28px 20px 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+    }
+    .brain-panel h2 {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text);
+      text-align: center;
+    }
+
+    /* ── SVG brain ── */
+    .brain-svg-wrap {
+      position: relative;
+      width: 100%;
+      max-width: 300px;
+    }
+    .brain-svg-wrap svg {
+      width: 100%;
+      height: auto;
+      filter: drop-shadow(0 4px 24px rgba(0,0,0,.5));
+    }
+
+    .lobe {
+      cursor: pointer;
+      transition: filter .3s, opacity .3s;
+      opacity: .72;
+    }
+    .lobe.active {
+      opacity: 1;
+      filter: brightness(1.25) drop-shadow(0 0 10px currentColor);
+    }
+    .lobe:not(.active) { opacity: .38; }
+
+    /* Label badges on brain */
+    .lobe-labels {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      pointer-events: none;
+    }
+    .lobe-label {
+      position: absolute;
+      font-size: 9px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      padding: 2px 6px;
+      border-radius: 8px;
+      opacity: 0;
+      transition: opacity .3s;
+      white-space: nowrap;
+    }
+    .lobe-label.visible { opacity: 1; }
+
+    /* Lobe navigation dots */
+    .lobe-nav {
+      display: flex;
+      gap: 10px;
+    }
+    .lobe-btn {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      border: none;
+      cursor: pointer;
+      opacity: .35;
+      transition: opacity .2s, transform .2s;
+    }
+    .lobe-btn.active { opacity: 1; transform: scale(1.4); }
+    .lobe-btn[data-lobe="frontal"]     { background: var(--frontal); }
+    .lobe-btn[data-lobe="parietal"]    { background: var(--parietal); }
+    .lobe-btn[data-lobe="occipital"]   { background: var(--occipital); }
+    .lobe-btn[data-lobe="temporal"]    { background: var(--temporal); }
+    .lobe-btn[data-lobe="cerebellum"]  { background: var(--cerebellum); }
+
+    /* ── Info panel ── */
+    .info-panel {
+      background: var(--card);
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      padding: 28px 24px;
+      min-height: 360px;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .lobe-info {
+      display: none;
+      flex-direction: column;
+      gap: 16px;
+      animation: fadeIn .4s ease;
+    }
+    .lobe-info.active { display: flex; }
+
+    @keyframes fadeIn {
+      from { opacity:0; transform: translateY(8px); }
+      to   { opacity:1; transform: none; }
+    }
+
+    .lobe-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      width: fit-content;
+    }
+    .lobe-info[data-lobe="frontal"]    .lobe-badge { background: rgba(233,30,140,.15); color: var(--frontal); border: 1px solid rgba(233,30,140,.3); }
+    .lobe-info[data-lobe="parietal"]   .lobe-badge { background: rgba(240,192,64,.12); color: var(--parietal); border: 1px solid rgba(240,192,64,.3); }
+    .lobe-info[data-lobe="occipital"]  .lobe-badge { background: rgba(64,200,224,.12); color: var(--occipital); border: 1px solid rgba(64,200,224,.3); }
+    .lobe-info[data-lobe="temporal"]   .lobe-badge { background: rgba(46,204,113,.12); color: var(--temporal); border: 1px solid rgba(46,204,113,.3); }
+    .lobe-info[data-lobe="cerebellum"] .lobe-badge { background: rgba(231,76,60,.12);  color: var(--cerebellum); border: 1px solid rgba(231,76,60,.3); }
+
+    .lobe-info h3 {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .lobe-key-role {
+      font-size: 13px;
+      color: var(--muted);
+      font-style: italic;
+    }
+    .lobe-functions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .lobe-functions .fn-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 13.5px;
+      line-height: 1.5;
+      color: var(--text);
+    }
+    .fn-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      margin-top: 6px;
+      flex-shrink: 0;
+    }
+    .lobe-info[data-lobe="frontal"]    .fn-dot { background: var(--frontal); }
+    .lobe-info[data-lobe="parietal"]   .fn-dot { background: var(--parietal); }
+    .lobe-info[data-lobe="occipital"]  .fn-dot { background: var(--occipital); }
+    .lobe-info[data-lobe="temporal"]   .fn-dot { background: var(--temporal); }
+    .lobe-info[data-lobe="cerebellum"] .fn-dot { background: var(--cerebellum); }
+
+    .lobe-stat {
+      margin-top: 4px;
+      padding: 12px 14px;
+      background: rgba(255,255,255,.04);
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      font-size: 12.5px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    .lobe-stat strong { color: var(--teal); }
+
+    /* Auto-advance countdown ring */
+    .auto-ring-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: auto;
+      padding-top: 16px;
+    }
+    .ring-svg { flex-shrink: 0; }
+    .ring-track { fill: none; stroke: rgba(255,255,255,.08); stroke-width: 3; }
+    .ring-fill  {
+      fill: none;
+      stroke-width: 3;
+      stroke-linecap: round;
+      transform: rotate(-90deg);
+      transform-origin: center;
+      transition: stroke-dashoffset 1s linear;
+    }
+    .ring-label { font-size: 10px; fill: var(--muted); dominant-baseline: middle; text-anchor: middle; }
+    .auto-text { font-size: 12px; color: var(--muted); }
+    .auto-text strong { color: var(--text); }
+
+    /* ── Facts ticker ── */
+    .facts-row {
+      background: var(--card);
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      padding: 18px 24px;
+      margin-bottom: 20px;
+    }
+    .facts-label {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      margin-bottom: 10px;
+    }
+    .fact-text {
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--text);
+      min-height: 44px;
+      opacity: 1;
+      transition: opacity .4s;
+    }
+    .fact-text.fade { opacity: 0; }
+
+    /* ── Lobe legend row ── */
+    .legend-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 12px;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 6px 12px;
+      border-radius: 10px;
+      background: var(--card2);
+      border: 1px solid transparent;
+      transition: border-color .25s, color .25s;
+    }
+    .legend-item:hover { border-color: var(--border); color: var(--text); }
+    .legend-item.active { border-color: currentColor; }
+    .legend-swatch {
+      width: 12px; height: 12px;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+    .legend-item[data-lobe="frontal"]     { color: var(--frontal); }
+    .legend-item[data-lobe="parietal"]    { color: var(--parietal); }
+    .legend-item[data-lobe="occipital"]   { color: var(--occipital); }
+    .legend-item[data-lobe="temporal"]    { color: var(--temporal); }
+    .legend-item[data-lobe="cerebellum"]  { color: var(--cerebellum); }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <div class="wait-header">
+    <div class="badge"><span class="badge-dot"></span> Идёт глубокий анализ ваших данных</div>
+    <h1>Пока ждёте — узнайте о мозге</h1>
+    <p>Результаты будут готовы через 5–8 минут. Пройдитесь по долям мозга — это поможет понять свой отчёт.</p>
+  </div>
+
+  <!-- Timer bar -->
+  <div class="timer-wrap">
+    <span style="font-size:13px;color:var(--muted)">Готовность</span>
+    <div class="timer-track">
+      <div class="timer-fill" id="timerFill"></div>
+    </div>
+    <div class="timer-text" id="timerText">0%</div>
+  </div>
+
+  <!-- Main grid: brain + info -->
+  <div class="main-grid">
+
+    <!-- Brain SVG panel -->
+    <div class="brain-panel">
+      <h2>Головной мозг</h2>
+      <div class="brain-svg-wrap" id="brainWrap">
+        <svg viewBox="0 0 320 290" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <!-- Brain clip path -->
+            <clipPath id="brainClip">
+              <path d="M 72,192 C 48,180 26,155 22,122 C 17,89 32,57 60,38 C 85,21 118,14 155,15 C 192,16 228,30 252,60 C 272,85 276,120 265,152 C 254,180 230,196 205,200 C 182,204 158,198 136,193 C 118,190 96,190 84,194 Z"/>
+            </clipPath>
+            <!-- Glow filters -->
+            <filter id="glowFrontal"><feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+            <filter id="glowParietal"><feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+            <filter id="glowOccipital"><feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+            <filter id="glowTemporal"><feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+            <filter id="glowCerebellum"><feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+          </defs>
+
+          <!-- Base brain fill -->
+          <path d="M 72,192 C 48,180 26,155 22,122 C 17,89 32,57 60,38 C 85,21 118,14 155,15 C 192,16 228,30 252,60 C 272,85 276,120 265,152 C 254,180 230,196 205,200 C 182,204 158,198 136,193 C 118,190 96,190 84,194 Z"
+                fill="#1a1d27" stroke="rgba(255,255,255,.12)" stroke-width="1.5"/>
+
+          <!-- Cerebellum (outside main clip) -->
+          <path class="lobe" data-lobe="cerebellum"
+            d="M 205,198 C 222,195 245,200 258,214 C 270,228 268,250 255,260 C 242,270 224,269 213,258 C 202,248 200,230 206,216 Z"
+            fill="#e74c3c" id="lobe-cerebellum"/>
+
+          <!-- Lobes clipped to brain -->
+          <g clip-path="url(#brainClip)">
+
+            <!-- Temporal (bottom strip) -->
+            <ellipse class="lobe" data-lobe="temporal"
+              cx="155" cy="195" rx="108" ry="58"
+              fill="#2ecc71" id="lobe-temporal"/>
+
+            <!-- Occipital (back right) -->
+            <ellipse class="lobe" data-lobe="occipital"
+              cx="258" cy="120" rx="58" ry="76"
+              fill="#40c8e0" id="lobe-occipital"/>
+
+            <!-- Parietal (top middle-back) -->
+            <ellipse class="lobe" data-lobe="parietal"
+              cx="195" cy="72" rx="80" ry="74"
+              fill="#f0c040" id="lobe-parietal"/>
+
+            <!-- Frontal (front left) -->
+            <ellipse class="lobe" data-lobe="frontal"
+              cx="82" cy="105" rx="92" ry="95"
+              fill="#e91e8c" id="lobe-frontal"/>
+          </g>
+
+          <!-- Brain outline on top -->
+          <path d="M 72,192 C 48,180 26,155 22,122 C 17,89 32,57 60,38 C 85,21 118,14 155,15 C 192,16 228,30 252,60 C 272,85 276,120 265,152 C 254,180 230,196 205,200 C 182,204 158,198 136,193 C 118,190 96,190 84,194 Z"
+                fill="none" stroke="rgba(255,255,255,.18)" stroke-width="1.5"/>
+
+          <!-- Gyri lines (stylized brain wrinkles) -->
+          <g fill="none" stroke="rgba(0,0,0,.22)" stroke-width="1.5" stroke-linecap="round">
+            <path d="M 52,80 C 66,66 86,64 102,72"/>
+            <path d="M 48,108 C 63,95 85,93 103,101"/>
+            <path d="M 55,136 C 72,124 94,122 110,130"/>
+            <path d="M 130,38 C 152,27 180,28 198,40"/>
+            <path d="M 138,68 C 160,57 188,58 205,70"/>
+            <path d="M 210,100 C 228,88 248,91 260,104"/>
+            <path d="M 205,135 C 222,124 242,127 252,140"/>
+          </g>
+
+          <!-- Brain stem -->
+          <path d="M 130,198 C 125,215 128,240 134,252 C 138,260 148,262 153,254 C 158,246 158,222 154,205 Z"
+                fill="#8899aa" opacity=".6"/>
+        </svg>
+      </div>
+
+      <!-- Lobe nav dots -->
+      <div class="lobe-nav">
+        <button class="lobe-btn" data-lobe="frontal"    title="Лобная доля"></button>
+        <button class="lobe-btn" data-lobe="parietal"   title="Теменная доля"></button>
+        <button class="lobe-btn" data-lobe="occipital"  title="Затылочная доля"></button>
+        <button class="lobe-btn" data-lobe="temporal"   title="Височная доля"></button>
+        <button class="lobe-btn" data-lobe="cerebellum" title="Мозжечок"></button>
+      </div>
+    </div>
+
+    <!-- Info panel -->
+    <div class="info-panel">
+
+      <!-- Frontal lobe -->
+      <div class="lobe-info" data-lobe="frontal">
+        <div class="lobe-badge">Лобная доля</div>
+        <h3>Frontal Lobe</h3>
+        <div class="lobe-key-role">Высшие когнитивные функции и контроль поведения</div>
+        <div class="lobe-functions">
+          <div class="fn-item"><div class="fn-dot"></div><span>Планирование и проспективная память — помнить о будущих задачах</span></div>
+          <div class="fn-item"><div class="fn-dot"></div><span>Речь: зона Брока — продукция устной речи</span></div>
+          <div class="fn-item"><div class="fn-dot"></div><span>Личность, поведение и принятие решений</span></div>
+          <div class="fn-item"><div class="fn-dot"></div><span>Исполнительные функции: контроль импульсов, внимание, рабочая память</span></div>
+          <div class="fn-item"><div class="fn-dot"></div><span>Моторная кора — управление произвольными движениями</span></div>
+        </div>
+        <div class="lobe-stat">
+          <strong>Интересный факт:</strong> Лобная доля — самая большая доля мозга. Она составляет около <strong>41%</strong> объёма коры полушарий. Именно её развитие отличает нас от других приматов.
+        </div>
+        <div class="auto-ring-wrap">
+          <svg class="ring-svg" width="34" height="34" viewBox="0 0 34 34">
+            <circle class="ring-track" cx="17" cy="17" r="13"/>
+            <circle class="ring-fill" id="ringFill" cx="17" cy="17" r="13"
+              stroke="#e91e8c"
+              stroke-dasharray="81.7"
+              stroke-dashoffset="81.7"/>
+            <text class="ring-label" x="17" y="17" id="ringNum">10</text>
+          </svg>
+          <div class="auto-text"><strong>Далее:</strong> Теменная доля</div>
+        </div>
+      </div>
+
+      <!-- Parietal lobe -->
+      <div class="lobe-info" data-lobe="parietal">
+        <div class="lobe-badge">Теменная доля</div>
+        <h3>Parietal Lobe</h3>
+        <div class="lobe-key-role">Обработка сенсорной информации и пространства</div>
+        <div class="lobe-functions">
+          <div class="fn-item"><div class="fn-dot"></div><span>Ощущения: прикосновение, боль, температура, давление</span></div>
+          <div class="fn-item"><div class="fn-dot"></div><span>Пространственная ориентация — где вы находитесь относительно объектов</span></div>
+          <div class="fn-item"><div class="fn-dot"></div><span>Интеграция сенсорной информации из разных источников</span></div>
+          <div class="fn-item"><div class="fn-dot"></div><span>Распознавание объектов на ощупь (стереогнозис)</span></div>
+          <div class="fn-item"><div class="fn-dot"></div><span>Обучение, язык, планирование сложных движений</span></div>
+        </div>
+        <div class="lobe-stat">
+          <strong>Интересный факт:</strong> Мозг Эйнштейна имел необычно развитую теменную долю — особенно область, отвечающую за математические и пространственные рассуждения.
+        </div>
+        <div class="auto-ring-wrap">
+          <svg class="ring-svg" width="34" height="34" viewBox="0 0 34 34">
+            <circle class="ring-track" cx="17" cy="17" r="13"/>
+            <circle class="ring-fill" id="ringFill2" cx="17" cy="17" r="13"
+              stroke="#f0c040"
+              stroke-dasharray="81.7"
+              stroke-dashoffset="81.7"/>
+            <text class="ring-label" x="17" y="17" id="ringNum2">10</text>
+          </svg>
+          <div class="auto-text"><strong>Далее:</strong> Затылочная доля</div>
+        </div>
+      </div>
+
+      <!-- Occipital lobe -->
+      <div class="lobe-info" data-lobe="occipital">
+        <div class="lobe-badge">Затылочная доля</div>
+        <h3>Occipital Lobe</h3>
+        <div class="lobe-key-role">Зрительная система мозга</div>
+        <div class="lobe-functions">
+          <div class="fn-item"><div class="fn-dot"></div><span>Обработка зрительной информации от обоих глаз</span></div>
+          <div class="fn-item"><div class="fn-dot"></div><span>Распознавание объектов, лиц, цвета и движения</span></div>
+          <div class="fn-item"><div class="fn-dot"></div><span>Анализ формы, глубины, пространственных отношений</span></div>
+          <div class="fn-item"><div class="fn-dot"></div><span>Передача визуальных данных в теменную (где?) и височную (что?) доли</span></div>
+        </div>
+        <div class="lobe-stat">
+          <strong>Интересный факт:</strong> Визуальная кора обрабатывает информацию <strong>перекрёстно</strong> — левая часть мозга обрабатывает правое поле зрения, и наоборот. Это происходит в доли секунды.
+        </div>
+        <div class="auto-ring-wrap">
+          <svg class="ring-svg" width="34" height="34" viewBox="0 0 34 34">
+            <circle class="ring-track" cx="17" cy="17" r="13"/>
+            <circle class="ring-fill" id="ringFill3" cx="17" cy="17" r="13"
+              stroke="#40c8e0"
+              stroke-dasharray="81.7"
+              stroke-dashoffset="81.7"/>
+            <text class="ring-label" x="17" y="17" id="ringNum3">10</text>
+          </svg>
+          <div class="auto-text"><strong>Далее:</strong> Височная доля</div>
+        </div>
+      </div>
+
+      <!-- Temporal lobe -->
+      <div class="lobe-info" data-lobe="temporal">
+        <div class="lobe-badge">Височная доля</div>
+        <h3>Temporal Lobe</h3>
+        <div class="lobe-key-role">Память, слух и понимание речи</div>
+        <div class="lobe-functions">
+          <div class="fn-item"><div class="fn-dot"></div><span>Эпизодическая память — воспоминания о пережитых событиях</span></div>
+          <div class="fn-item"><div class="fn-dot"></div><span>Обработка звуков и распознавание речи (зона Вернике)</span></div>
+          <div class="fn-item"><div class="fn-dot"></div><span>Понимание языка, семантика, чтение</span></div>
+          <div class="fn-item"><div class="fn-dot"></div><span>Эмоциональные реакции, ассоциативное мышление</span></div>
+          <div class="fn-item"><div class="fn-dot"></div><span>Распознавание лиц — прозопагнозия возникает при её повреждении</span></div>
+        </div>
+        <div class="lobe-stat">
+          <strong>Интересный факт:</strong> Гиппокамп — ключевая структура для формирования новых воспоминаний — находится внутри височной доли. Его объём коррелирует с навигационными способностями.
+        </div>
+        <div class="auto-ring-wrap">
+          <svg class="ring-svg" width="34" height="34" viewBox="0 0 34 34">
+            <circle class="ring-track" cx="17" cy="17" r="13"/>
+            <circle class="ring-fill" id="ringFill4" cx="17" cy="17" r="13"
+              stroke="#2ecc71"
+              stroke-dasharray="81.7"
+              stroke-dashoffset="81.7"/>
+            <text class="ring-label" x="17" y="17" id="ringNum4">10</text>
+          </svg>
+          <div class="auto-text"><strong>Далее:</strong> Мозжечок</div>
+        </div>
+      </div>
+
+      <!-- Cerebellum -->
+      <div class="lobe-info" data-lobe="cerebellum">
+        <div class="lobe-badge">Мозжечок</div>
+        <h3>Cerebellum</h3>
+        <div class="lobe-key-role">Координация движения и моторное обучение</div>
+        <div class="lobe-functions">
+          <div class="fn-item"><div class="fn-dot"></div><span>Точная координация и плавность движений</span></div>
+          <div class="fn-item"><div class="fn-dot"></div><span>Баланс и поза тела</span></div>
+          <div class="fn-item"><div class="fn-dot"></div><span>Моторные воспоминания — мышечная память (езда на велосипеде)</span></div>
+          <div class="fn-item"><div class="fn-dot"></div><span>Участие в когнитивных функциях: внимание, речь, обработка эмоций</span></div>
+        </div>
+        <div class="lobe-stat">
+          <strong>Интересный факт:</strong> Мозжечок содержит более <strong>50%</strong> всех нейронов мозга, хотя занимает лишь <strong>10%</strong> его объёма. В нём около 69 миллиардов клеток.
+        </div>
+        <div class="auto-ring-wrap">
+          <svg class="ring-svg" width="34" height="34" viewBox="0 0 34 34">
+            <circle class="ring-track" cx="17" cy="17" r="13"/>
+            <circle class="ring-fill" id="ringFill5" cx="17" cy="17" r="13"
+              stroke="#e74c3c"
+              stroke-dasharray="81.7"
+              stroke-dashoffset="81.7"/>
+            <text class="ring-label" x="17" y="17" id="ringNum5">10</text>
+          </svg>
+          <div class="auto-text"><strong>Сначала:</strong> Лобная доля</div>
+        </div>
+      </div>
+
+    </div><!-- /info-panel -->
+  </div><!-- /main-grid -->
+
+  <!-- Facts ticker -->
+  <div class="facts-row">
+    <div class="facts-label">Знаете ли вы?</div>
+    <div class="fact-text" id="factText">Мозг взрослого человека потребляет около 20% всей энергии организма, хотя весит лишь 2% от массы тела.</div>
+  </div>
+
+  <!-- Legend -->
+  <div class="legend-row">
+    <div class="legend-item" data-lobe="frontal">    <div class="legend-swatch" style="background:#e91e8c"></div>Лобная доля</div>
+    <div class="legend-item" data-lobe="parietal">   <div class="legend-swatch" style="background:#f0c040"></div>Теменная доля</div>
+    <div class="legend-item" data-lobe="occipital">  <div class="legend-swatch" style="background:#40c8e0"></div>Затылочная доля</div>
+    <div class="legend-item" data-lobe="temporal">   <div class="legend-swatch" style="background:#2ecc71"></div>Височная доля</div>
+    <div class="legend-item" data-lobe="cerebellum"> <div class="legend-swatch" style="background:#e74c3c"></div>Мозжечок</div>
+  </div>
+
+</div><!-- /container -->
+
+<script>
+// ── Data ──────────────────────────────────────────────
+const lobes = ['frontal','parietal','occipital','temporal','cerebellum'];
+
+const ringIds = {
+  frontal:     { fill:'ringFill',  num:'ringNum'  },
+  parietal:    { fill:'ringFill2', num:'ringNum2' },
+  occipital:   { fill:'ringFill3', num:'ringNum3' },
+  temporal:    { fill:'ringFill4', num:'ringNum4' },
+  cerebellum:  { fill:'ringFill5', num:'ringNum5' },
+};
+
+const facts = [
+  'Мозг взрослого человека потребляет около 20% всей энергии организма, хотя весит лишь 2% от массы тела.',
+  'Скорость передачи нервных импульсов может достигать 432 км/ч — быстрее болид Формулы 1.',
+  'Каждую секунду мозг производит от 70 000 до 100 000 мыслей.',
+  'Мозг на 73% состоит из воды. Обезвоживание всего на 2% снижает концентрацию внимания.',
+  'У мозга нет болевых рецепторов — нейрохирурги могут оперировать пациента в сознании.',
+  'Каждую ночь мозг воспроизводит и «переписывает» воспоминания, укрепляя то, что важно, и стирая лишнее.',
+  'Мозг генерирует около 23 Вт электрической энергии — достаточно, чтобы зажечь небольшую лампочку.',
+  'Новые нейронные связи образуются каждый раз, когда вы учитесь чему-то новому — буквально меняя структуру мозга.',
+  'Сон критически важен: за ночь мозг очищается от токсичных белков, накопившихся за день.',
+  'Мозг продолжает развиваться до 25 лет — лобная доля формируется последней.',
+];
+
+// ── Timer (6 minutes = 360 s) ─────────────────────────
+const TOTAL_SECONDS = 360;
+let elapsed = 0;
+const timerFill = document.getElementById('timerFill');
+const timerText = document.getElementById('timerText');
+
+const timerInterval = setInterval(() => {
+  elapsed++;
+  const pct = Math.min((elapsed / TOTAL_SECONDS) * 100, 100);
+  timerFill.style.width = pct + '%';
+  timerText.textContent = Math.round(pct) + '%';
+  if (elapsed >= TOTAL_SECONDS) clearInterval(timerInterval);
+}, 1000);
+
+// ── Lobe rotation ─────────────────────────────────────
+let currentIdx = 0;
+const AUTO_SECONDS = 10; // seconds per lobe
+let ringTimer = null;
+let ringElapsed = 0;
+
+function setActiveLobe(name) {
+  // SVG lobes
+  document.querySelectorAll('.lobe').forEach(el => {
+    el.classList.toggle('active', el.dataset.lobe === name);
+  });
+  // Info panels
+  document.querySelectorAll('.lobe-info').forEach(el => {
+    el.classList.toggle('active', el.dataset.lobe === name);
+  });
+  // Nav dots
+  document.querySelectorAll('.lobe-btn').forEach(el => {
+    el.classList.toggle('active', el.dataset.lobe === name);
+  });
+  // Legend
+  document.querySelectorAll('.legend-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.lobe === name);
+  });
+}
+
+function startRing(name) {
+  ringElapsed = 0;
+  const ids = ringIds[name];
+  if (!ids) return;
+  const fillEl = document.getElementById(ids.fill);
+  const numEl  = document.getElementById(ids.num);
+  const circumference = 81.7;
+
+  if (fillEl) fillEl.style.strokeDashoffset = circumference;
+  if (numEl)  numEl.textContent = AUTO_SECONDS;
+
+  if (ringTimer) clearInterval(ringTimer);
+  ringTimer = setInterval(() => {
+    ringElapsed++;
+    const remaining = AUTO_SECONDS - ringElapsed;
+    if (numEl) numEl.textContent = remaining;
+    const offset = circumference * (1 - ringElapsed / AUTO_SECONDS);
+    if (fillEl) fillEl.style.strokeDashoffset = Math.max(0, offset);
+
+    if (ringElapsed >= AUTO_SECONDS) {
+      clearInterval(ringTimer);
+      advanceLobe();
+    }
+  }, 1000);
+}
+
+function advanceLobe() {
+  currentIdx = (currentIdx + 1) % lobes.length;
+  setActiveLobe(lobes[currentIdx]);
+  startRing(lobes[currentIdx]);
+}
+
+// Manual nav
+document.querySelectorAll('.lobe-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const name = btn.dataset.lobe;
+    currentIdx = lobes.indexOf(name);
+    setActiveLobe(name);
+    startRing(name);
+  });
+});
+document.querySelectorAll('.lobe').forEach(el => {
+  el.addEventListener('click', () => {
+    const name = el.dataset.lobe;
+    currentIdx = lobes.indexOf(name);
+    setActiveLobe(name);
+    startRing(name);
+  });
+});
+document.querySelectorAll('.legend-item').forEach(el => {
+  el.addEventListener('click', () => {
+    const name = el.dataset.lobe;
+    currentIdx = lobes.indexOf(name);
+    setActiveLobe(name);
+    startRing(name);
+  });
+});
+
+// Init
+setActiveLobe(lobes[0]);
+startRing(lobes[0]);
+
+// ── Facts ticker ──────────────────────────────────────
+let factIdx = 0;
+const factEl = document.getElementById('factText');
+
+function rotateFact() {
+  factEl.classList.add('fade');
+  setTimeout(() => {
+    factIdx = (factIdx + 1) % facts.length;
+    factEl.textContent = facts[factIdx];
+    factEl.classList.remove('fade');
+  }, 400);
+}
+setInterval(rotateFact, 8000);
+</script>
+</body>
+</html>
